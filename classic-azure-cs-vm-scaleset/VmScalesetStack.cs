@@ -28,7 +28,7 @@ class VmScalesetStack : Stack
             }
         );
 
-        var subnet = new Subnet("subnet", 
+        var subnet = new Subnet("subnet",
             new SubnetArgs
             {
                 ResourceGroupName = resourceGroup.Name,
@@ -220,20 +220,16 @@ nohup python -m SimpleHTTPServer 80 &"
                 },
                 TargetResourceId = scaleSet.Id
             });
-            
-                
 
         // The public IP address is not allocated until the VM is running, so wait for that
         // resource to create, and then lookup the IP address again to report its public IP.
-        this.IpAddress = Output
-            .Tuple<string, string, string>(scaleSet.Id, publicIp.Name, resourceGroup.Name)
-            .Apply<string>(async t =>
+        this.IpAddress = scaleSet.Id
+            .Apply(_ => GetPublicIP.Invoke(new GetPublicIPInvokeArgs
             {
-                (_, string name, string resourceGroupName) = t;
-                var ip = await GetPublicIP.InvokeAsync(new GetPublicIPArgs
-                    {Name = name, ResourceGroupName = resourceGroupName});
-                return ip.IpAddress;
-            });
+                Name = publicIp.Name,
+                ResourceGroupName = resourceGroup.Name
+            }))
+            .Apply(ip => ip.IpAddress);
     }
 
     [Output] public Output<string> IpAddress { get; set; }
