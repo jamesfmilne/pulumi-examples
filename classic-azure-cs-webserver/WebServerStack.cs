@@ -41,7 +41,7 @@ class WebServerStack : Stack
                     new NetworkInterfaceIpConfigurationArgs
                     {
                         Name = "webserveripcfg",
-                        SubnetId = network.Subnets.Apply(subnets => subnets[0].Id),
+                        SubnetId = network.Subnets.Apply(subnets => subnets[0].Id ?? ""),
                         PrivateIpAddressAllocation = "Dynamic",
                         PublicIpAddressId = publicIp.Id
                     }
@@ -87,15 +87,13 @@ nohup python -m SimpleHTTPServer 80 &"
 
         // The public IP address is not allocated until the VM is running, so wait for that
         // resource to create, and then lookup the IP address again to report its public IP.
-        this.IpAddress = Output
-            .Tuple<string, string, string>(vm.Id, publicIp.Name, resourceGroup.Name)
-            .Apply<string>(async t =>
+        this.IpAddress = vm.Id
+            .Apply(_ => GetPublicIP.Invoke(new GetPublicIPInvokeArgs
             {
-                (_, string name, string resourceGroupName) = t;
-                var ip = await GetPublicIP.InvokeAsync(new GetPublicIPArgs
-                    {Name = name, ResourceGroupName = resourceGroupName});
-                return ip.IpAddress;
-            });
+                Name = publicIp.Name,
+                ResourceGroupName = resourceGroup.Name
+            }))
+            .Apply(ip => ip.IpAddress);
     }
 
     [Output] public Output<string> IpAddress { get; set; }
